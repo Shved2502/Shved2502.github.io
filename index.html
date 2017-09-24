@@ -1,0 +1,753 @@
+﻿ <!DOCTYPE HTML> 
+ <html>
+<head>
+  <meta charset="utf-8">
+  <title>AVL tree. Insert key</title>
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>  
+ <script>
+/*
+На консоли есть кнопки : создания рандомного дерева,
+создания дерева из заданного массива, вставки ключа,
+плей, пауза, next step, остановки
+и кнопки регулировки скорости
+
+Для чего нужны кнопки более-менее понятно
+Теперь немного о работе самого агоритма вставки ключа в АВЛ-дерево :
+
+-Проход по дереву и поиск заданного ключа (search)
+(если такой имеется, то работа завершается)
+-Вставка нового ключа в дерево и определение показателя балансировки (addKey)
+(balFact)
+-Проход до корня и проверка показателя балансировки в каждом ключе (drawHeight)
+(если балансировка нарушена, то дерево балансируется правым или левым вращением)
+*/
+
+ var canva; //холст
+var context; 
+var tree=null; //дерево 
+var treeCopy=null; //независимая копия дерева (нужна при срочном завершении анимации)
+var NODE_SIZE=24; //размер кружочка-узла
+var NODE_COLOR="#0f0"; //его цвет
+var LINE_COLOR="#000"; //основной цвет линий
+var SPACING_Y=60; //отступ от верха холста до дерева
+var NODE_SPACE=18; //минимальное расстояние между узлами
+var pieces=30; //на сколько кадров разбивается анимация (при поворотах)
+var ACCENT="#f00"; //цвет выделения узлов
+var DRAWTIME=30; //время между отрисовкой кадров
+var STEPTIME=600; //время между шагами
+var mode=3; //режим работы
+//0-pause 
+//1-animate
+//2-go to next step
+//3-finish
+
+
+//Очищение холста
+function clean(){
+	context.clearRect(0,0,canva.width,canva.height);
+}
+
+
+//Визуализация
+function search(k){//
+	clean();
+	tree.arrange();
+	tree.draw();
+	accentNode(tree.root);		
+//Обводит кружок красным
+	function accentNode(n){ 
+	
+		switch(mode){
+			case 0: //pause
+			setTimeout(accentNode,DRAWTIME,n);
+			break;
+			case 2://animation or next step
+			mode=0;
+			case 1:
+			if(n.parent!=null){
+				n.parent.draw();
+			}
+			n.lineColor=ACCENT;
+			n.draw();
+			n.lineColor=LINE_COLOR;
+			var next;
+			if(k<n.key){
+				next=n.left;
+			}else if(k>n.key){
+				next=n.right;
+			}else{
+				setTimeout(finish,STEPTIME);
+				return;
+			}
+			if(next!=null){
+				setTimeout(accentNode,STEPTIME,next);
+			}else{
+				setTimeout(addKey,STEPTIME,k,n);
+			}	
+			break;
+			case 3:
+			finish();
+			break;
+		}
+		
+	}
+	
+}
+
+//Добавление нового узла, его прорисовка и вызов drawHeight
+function addKey(k,n){
+	switch(mode){
+		case 0:
+		setTimeout(addKey,DRAWTIME,k,n);
+		break;
+		case 2:
+		mode=0;
+		case 1:
+		var nn = new Node(k,n);
+		if(k<n.key){
+			n.left=nn;
+		}else{
+			n.right=nn;
+		}
+		clean();
+		tree.arrange();
+		tree.root.saveCoords();
+		tree.draw();
+		setTimeout(drawHeight,STEPTIME,n);
+		break;
+		case 3:
+		finish();
+		break;
+	}
+}
+//Пересчитывает высоту, балансирует дерево, поворачивает и анимирует это все
+//Потом вызывает себя для родительского узла и так до корня
+ function drawHeight(n){
+	switch(mode){
+		case 0:
+		setTimeout(drawHeight,DRAWTIME,n);
+		break;
+		case 2:
+		mode=0;
+		case 1:
+		if(n==null){
+			var nextStep=3;
+			tree.root.saveCoords();
+			tree.arrange();
+			tree.root.setD();
+			setTimeout(moveTree,STEPTIME);
+		}else{
+			var nextStep=0;
+			n.setHeight();
+			clean();
+			n.lineColor="#f00";
+			tree.draw();
+			n.lineColor="#000";
+			if(Math.abs(n.balFact)>1){
+				setTimeout(balance,STEPTIME,n);
+			}else{
+					setTimeout(drawHeight,STEPTIME,n.parent);
+			}
+		}
+		break;
+		case 3:
+		finish();
+		break;	
+		//
+	}
+	function balance(){
+		if(n.balFact==2){//высота правого поддерева больше на 2, левый поворот
+			if(n.right.balFact>=0){
+				nextStep=0;
+				leftRot(n);
+				//return this.leftRot();
+			}else{
+				nextStep=1;
+				var r=n.right;
+				rightRot(r);
+				//return this.leftRot();
+			}
+		}else {//правый поворот
+			if(n.left.balFact<=0){
+				nextStep=0;
+				rightRot(n);
+				//return this.rightRot();
+			}else{
+				nextStep=2;
+				var l=n.left;
+				leftRot(l);
+				/*l.leftRot();
+				return this.rightRot();*/
+			}
+		}
+	}
+	function leftRot(nnn){
+		switch(mode){
+			case 0:
+			setTimeout(leftRot,DRAWTIME,nnn);
+			case 2:
+			mode=0;
+			case 1:
+			tree.root.saveCoords();
+			if(nnn.parent==null){
+				tree.root=nnn.leftRot();
+			}else{
+			nnn.leftRot();
+			}
+			tree.arrange();
+			tree.root.setD();
+			setTimeout(moveTree,STEPTIME);
+			break;
+			case 3:
+			finish();			
+			break;	
+		}
+	}
+	function rightRot(nnn){
+		switch(mode){
+			case 0:
+			setTimeout(rightRot,DRAWTIME,nnn);
+			case 2:
+			mode=0;
+			case 1:
+			tree.root.saveCoords();
+			if(nnn.parent==null){
+				tree.root=nnn.rightRot();
+			}else{
+				nnn.rightRot();
+			}
+			tree.arrange();
+			tree.root.setD();
+			setTimeout(moveTree,STEPTIME);
+			break;
+			case 3:
+			finish();			
+			break;	
+		}
+	}
+	function moveTree(){
+		var flag=false;
+		switch(mode){
+			case 0:
+			setTimeout(moveTree,DRAWTIME);
+			break;
+			case 2:
+			mode=0;
+			flag=true;
+			case 1:
+			if(tree.root.move()||flag){
+				clean();
+				tree.draw();
+				switch(nextStep){
+					case 0:
+					setTimeout(drawHeight,STEPTIME,n.parent);
+					break;
+					case 1:
+					nextStep=0;
+					setTimeout(leftRot,STEPTIME,n);
+					break;
+					case 2:
+					nextStep=0;
+					setTimeout(rightRot,STEPTIME,n);
+					break;
+					case 3:
+					setTimeout(finish,STEPTIME);
+					break;
+				}
+			}else{
+				clean();
+				tree.root.drawSubTrFrom();
+				setTimeout(moveTree,DRAWTIME);
+			}
+			break;	
+			case 3:
+			finish();
+			break;
+		}
+	}
+}
+
+//Функция "остановки"
+function finish(){
+	mode=3;
+	clean();
+	tree=treeCopy;
+	tree.draw();
+	
+}
+
+//Задание контекста при загрузке страницы
+ window.onload = function () {
+ canva = document.getElementById("canva");
+	   context = canva.getContext("2d"); 
+	   context.lineWidth=3;
+	   context.font="14px arial";
+	   context.textAlign="center";
+	context.textBaseline = "middle";
+}
+
+//УЗЕЛ
+function Node(k,p){
+	
+	this.parent=p||null; //Родительский узел
+	this.key=k; //Ключ
+	this.height=1; //Высота поддерева
+	this.left=null; //Левый и правый дети
+	this.right=null;
+	this.balFact=0; //Высота правого сына минус высота левого, служит для понимания нужна ли балансировка
+	this.x=0; //Координаты на холсте
+	this.y=0;
+	this.xFrom=0; //Старые координаты
+	this.yFrom=0;
+	this.dx=0; //Приращение при анимации
+	this.dy=0;
+	this.lineColor=LINE_COLOR; //Цвет ободка узла
+//Проверяет близко ли находятся узлы
+	this.isNear=function(){
+		var eps=2;
+		if(Math.abs(this.x-this.xFrom)<eps&&Math.abs(this.y-this.yFrom)<eps){
+			return true;
+		}else{
+			return false;
+		}
+	}
+//Создает независимую копию
+	this.copy=function(){
+		var n=new Node(this.key);
+		n.height=this.height;
+		if(this.left!=null){
+		n.left=this.left.copy();
+		n.left.parent=n;
+		}
+		if(this.right!=null){
+		n.right=this.right.copy();
+		n.right.parent=n;
+		}
+		n.balFact=this.balFact;
+		n.x=this.x;
+		n.y=this.y;	
+		return n;
+	}
+//Устанавливает приращение узла (скорость)
+	this.setD=function(){
+		
+		this.dx=(this.x-this.xFrom)/pieces;
+		this.dy=(this.y-this.yFrom)/pieces;
+		if(this.left!=null){
+			this.left.setD();
+		}
+		if(this.right!=null){
+			this.right.setD();
+		}
+	}
+//Записывает в старые координаты текущие, чтобы потом двигать от этой точки
+	this.saveCoords=function(){
+		this.xFrom=this.x;
+		this.yFrom=this.y;
+		if(this.left!=null){
+			this.left.saveCoords();
+		}
+		if(this.right!=null){
+			this.right.saveCoords();
+		}
+	}
+//Сдвигает поддеревья на dx и dy
+	this.move=function(){ //
+		var flag=true;
+		var a=true;
+		if(!this.isNear()){ 
+			this.xFrom+=this.dx;
+			this.yFrom+=this.dy;
+			flag=false;
+		}
+		if(this.left!=null){//сдвигаем левое поддерево
+			a=this.left.move();
+			flag=flag&&a;
+		}
+		if(this.right!=null){//сдвигаем правое поддерево
+			a=this.right.move();
+			flag=flag&&a;
+		}
+		return flag;
+	}
+//Рисует дерево по старым координатам (когда высота не отображается)
+	this.drawFrom= function(){
+		context.beginPath();
+    context.arc(this.xFrom,this.yFrom, NODE_SIZE/2, 0, 2*Math.PI, false);
+    context.fillStyle = NODE_COLOR;
+    context.fill();
+    context.strokeStyle = this.lineColor;
+    context.stroke();
+	 context.fillStyle = '#000';
+	context.fillText(this.key,this.xFrom,this.yFrom);
+	context.strokeStyle = LINE_COLOR;
+	}
+	this.draw=function(){
+		context.beginPath();
+    context.arc(this.x,this.y, NODE_SIZE/2, 0, 2*Math.PI, false);
+    context.fillStyle = NODE_COLOR;
+    context.fill();
+    context.strokeStyle = this.lineColor;
+    context.stroke();
+	 context.fillStyle = '#000';
+	context.fillText(this.key,this.x,this.y);
+	
+	context.fillText(this.height,this.x,this.y-NODE_SIZE);// высота поддерева
+	context.strokeStyle = LINE_COLOR;
+	
+	
+	}
+//Рисует поддерево
+	this.drawSubTr=function(){
+		
+		context.beginPath();
+		if(this.left!=null){
+			
+		context.moveTo(this.x,this.y);
+		context.lineTo(this.left.x,this.left.y);
+		context.stroke();
+		}
+		if(this.right!=null){
+		context.moveTo(this.x,this.y);
+		context.lineTo(this.right.x,this.right.y);
+		context.stroke();
+		}
+		
+		this.draw();
+		if(this.left!=null){
+			this.left.drawSubTr();
+		}
+		if(this.right!=null){
+			this.right.drawSubTr();
+		}
+	}
+//Рисует поддерево по старым координатам
+	this.drawSubTrFrom=function(){
+		context.beginPath();
+		if(this.left!=null){
+			
+		context.moveTo(this.xFrom,this.yFrom);
+		context.lineTo(this.left.xFrom,this.left.yFrom);
+		context.stroke();
+		}
+		if(this.right!=null){
+		context.moveTo(this.xFrom,this.yFrom);
+		context.lineTo(this.right.xFrom,this.right.yFrom);
+		context.stroke();
+		}
+		
+		this.drawFrom();
+		if(this.left!=null){
+			this.left.drawSubTrFrom();
+		}
+		if(this.right!=null){
+			this.right.drawSubTrFrom();
+		}
+	}
+//Высчитывает высоту и balFact
+	this.setHeight=function(){
+		var a;
+		var b;
+		if(this.left!=null){
+			a=this.left.height;
+		}else{
+			a=0;
+		}
+		if(this.right!=null){
+			b=this.right.height;
+		}else{
+			b=0;
+		}
+		this.height=Math.max(a,b)+1;
+		this.balFact=b-a;
+	}
+//Балансировка дерева
+//Если высота правого больше на 2 ,то левый поворот
+//Иначе - правый поворот
+	this.balance=function(){
+		if(this.balFact==2){
+			if(this.right.balFact>=0){
+				
+				return this.leftRot();
+			}else{
+				
+				var r=this.right;
+				r.rightRot();
+				return this.leftRot();
+			}
+		}else if(this.balFact==-2){
+			if(this.left.balFact<=0){
+				return this.rightRot();
+			}else{
+				var l=this.left;
+				l.leftRot();
+				return this.rightRot();
+			}
+		}else{
+			return this;
+		}
+		
+	}
+//Левый поворот
+	this.leftRot=function(){
+			var r= this.right;
+			this.right= r.left;
+			if(this.right!=null){
+			this.right.parent=this;
+			}
+			r.left=this;
+			r.parent=this.parent;
+			this.parent=r;
+			if(r.parent!=null){
+				if(r.key<r.parent.key){
+					r.parent.left=r;
+				}else{
+					r.parent.right=r;
+				}
+			}
+			this.setHeight();
+			r.setHeight();
+			return r;
+	}
+//Правый поворот
+	this.rightRot=function(){
+			var l=this.left;
+			this.left=l.right;
+			if(this.left!=null){
+				this.left.parent=this;
+			}
+			l.right=this;
+			
+			l.parent=this.parent;
+			this.parent=l;
+			if(l.parent!=null){
+				if(l.key<l.parent.key){
+					l.parent.left=l;
+				}else{
+					l.parent.right=l;
+				}
+			}
+			this.setHeight();
+			l.setHeight();
+			return l;
+	}
+//Высчитывает координаты узлов
+	this.arrangeSubTr=function(w){
+		w=w/2;
+		var n;
+		if(this.left!=null){
+			n=this.left;
+			n.x=this.x-w/2;
+			n.y=this.y+NODE_SPACE*2;
+			//n.y=CANVA_HEIGHT-n.height*(NODE_SIZE+NODE_SPACE);
+			n.arrangeSubTr(w);
+		}
+		if(this.right!=null){
+			n=this.right;
+			n.x=w/2+this.x;
+			n.y=this.y+NODE_SPACE*2;
+			//n.y=CANVA_HEIGHT-n.height*(NODE_SIZE+NODE_SPACE);
+			n.arrangeSubTr(w);
+		}
+	}
+}
+
+//ДЕРЕВО
+function Tree(){
+//Корневой узел дерева
+	this.root=null;
+//Возвращает независимую копию дерева
+	this.copy= function(){
+		var t =new Tree();
+		t.root=this.root.copy();
+		return t;
+	}
+//Пересчитывает высоту узлов до корня
+	this.calcHeight=function(n){
+		if(n.parent==null){
+			this.root.setHeight();
+			var main = this.root.balance();
+			this.root = main;
+		}else{
+			n.setHeight();
+			var main=n.balance();
+			this.calcHeight(n.parent);
+		}
+	}
+//Вставляет ключ
+	this.insert=function(k){
+		if(this.root==null){
+			this.root= new Node(k);
+		}else{
+			var temp=this.root;
+			var flag=true;
+			while(temp!=null&&flag&&temp.key!=k){
+					if(k<temp.key){
+						if(temp.left==null){
+							temp.left=new Node(k,temp);
+							flag=false;
+						}else{
+						temp=temp.left;
+						}
+					}else{
+						if(temp.right==null){
+							temp.right=new Node(k,temp);
+							flag=false;
+						}else{
+						temp=temp.right;
+						}
+					}
+			}
+			if(temp.key==k){
+				return false;
+				}
+			this.calcHeight(temp);
+		}
+		return true;
+	}
+//Рисует поддерево
+	this.draw=function(){
+		this.root.drawSubTr();
+	}
+//Рассчитывает координаты всех узлов
+	this.arrange=function(){
+		var w =( Math.pow( 2, this.root.height-1) * (NODE_SIZE + NODE_SPACE)) - NODE_SPACE;
+		this.root.x=canva.width/2;///SPACING_X+ w*0.5;
+		this.root.y=SPACING_Y;
+		//this.root.y=CANVA_HEIGHT-this.root.height*(NODE_SIZE+NODE_SPACE);
+		this.root.arrangeSubTr(w);
+	}
+}
+
+//Кнопки
+
+//Кнопка создания нового дерева
+function newtree(){
+	clean();
+	tree=new Tree();
+    var a;
+	var s=Math.floor(Math.random()*30+1);
+	var i=0;
+	while(i<s){
+		a=Math.floor(Math.random()*s*2);
+		if(tree.insert(a)){
+			i++;
+		}
+	}
+	tree.arrange();
+	tree.draw();
+}
+
+//Кнопка создания нового дерева из введенного массива
+function newtr(){
+	clean();
+	var arrTr = document.getElementById("arrTr");
+	var arr=arrTr.value.split(',');
+	tree=new Tree();
+	var key;
+	for(var i=0;i<arr.length;i++){
+		key=parseInt(arr[i],10);
+		if(key==key){
+			tree.insert(key);
+		}
+	}
+	if(tree.root!=null){
+	arrTr.style.border="0px";
+	tree.arrange();
+	tree.draw();
+	}else{
+	arrTr.style.border="1px solid red";
+	}
+}
+
+//Кнопка вставки ключа
+function insert(){
+if(mode==3){
+	var a=parseInt(document.getElementById("ins").value,10);
+	if(a==a){
+		document.getElementById("ins").style.border="0px";
+	if(tree!=null){
+		treeCopy=tree.copy();
+		treeCopy.insert(a);
+		treeCopy.arrange();
+		mode=1;
+		search(a);
+	}else{
+		tree=new Tree();
+		tree.insert(a);
+		tree.arrange();
+		tree.draw();
+	}}else{
+		document.getElementById("ins").style.border="1px solid red";
+	}
+}
+}
+
+//Кнопка плей
+function cont(){
+	if(mode!=3){
+	mode=1;
+	}
+}
+
+//Кнопка паузы
+function pause(){
+	if(mode!=3){
+	mode=0;
+	}
+}
+
+//Кнопка следующего шага
+function step(){
+if(mode!=3){
+	mode=2;
+}
+}
+
+//Кнопка остановки
+function fin(){
+	mode=3;
+}
+
+//Кнопка уменьшения скорости анимации
+function incSp(){
+	if(DRAWTIME>0){
+	DRAWTIME-=5;
+	STEPTIME=DRAWTIME*20;
+	}
+}
+
+//Кнопка увеличения скорости анимации
+function decSp(){
+if(DRAWTIME<100){
+	DRAWTIME+=5;
+	STEPTIME=DRAWTIME*20;
+	}
+}
+</script>
+<div id="menu">
+<h1><a href="https://en.wikipedia.org/wiki/AVL_tree#Insert">AVL Tree insertion algorithm<a/></h1>
+<button onclick="newtree()">new random tree</button>
+<input type="text" id="arrTr" placeholder="1,3,0,15, ...">
+ <button onclick="newtr()">new tree from text</button>
+
+<input type="text" id="ins"  >     
+<button onclick="insert()" >insert</button>
+
+<button onclick="pause()" ><img src="icons/pause.png"></button> 
+<button onclick="cont()" ><img src="icons/play.png"></button>
+<button onclick="step()"><img src="icons/step.png"></button>
+<button onclick="fin()" ><img src="icons/stop.png"></button>
+speed:
+<button onclick="decSp()"><img src="icons/decSp.png"></button>
+<button onclick="incSp()"><img src="icons/incSp.png"></button>
+
+</div>
+
+<canvas height="400" width="1350" id="canva">
+	</canvas>
+
+</body>
+</html>

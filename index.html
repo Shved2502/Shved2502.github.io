@@ -44,6 +44,10 @@ var mode=3; //режим работы
 //3-finish
 
 
+//Выводит сообщение в левом верхнем углу холста
+function log(str){
+	document.getElementById("log").innerHTML=str;
+}
 //Очищение холста
 function clean(){
 	context.clearRect(0,0,canva.width,canva.height);
@@ -125,6 +129,7 @@ function addKey(k,n){
 //Пересчитывает высоту, балансирует дерево, поворачивает и анимирует это все
 //Потом вызывает себя для родительского узла и так до корня
  function drawHeight(n){
+ log("");
 	switch(mode){
 		case 0:
 		setTimeout(drawHeight,DRAWTIME,n);
@@ -159,27 +164,26 @@ function addKey(k,n){
 	}
 	function balance(){
 		if(n.balFact==2){//высота правого поддерева больше на 2, левый поворот
-			if(n.right.balFact>=0){
+			if(n.right.balFact>=0){//просто левый
+				log("высота правого поддерева больше высоты левого на 2 <br> левый поворот");
 				nextStep=0;
 				leftRot(n);
-				//return this.leftRot();
-			}else{
+			}else{//большой левый
+			log("высота правого поддерева больше высоты левого на 2 <br> большой левый поворот");
 				nextStep=1;
 				var r=n.right;
 				rightRot(r);
-				//return this.leftRot();
 			}
 		}else {//правый поворот
-			if(n.left.balFact<=0){
+			if(n.left.balFact<=0){//просто правый
+			log("высота левого поддерева больше высоты правого на 2 <br> правый поворот");
 				nextStep=0;
 				rightRot(n);
-				//return this.rightRot();
-			}else{
+			}else{//большой правый
+			log("высота левого поддерева больше высоты правого на 2 <br> большой правый поворот");
 				nextStep=2;
 				var l=n.left;
 				leftRot(l);
-				/*l.leftRot();
-				return this.rightRot();*/
 			}
 		}
 	}
@@ -271,6 +275,7 @@ function addKey(k,n){
 
 //Функция "остановки"
 function finish(){
+log("");
 	mode=3;
 	clean();
 	tree=treeCopy;
@@ -711,20 +716,10 @@ function fin(){
 	mode=3;
 }
 
-//Кнопка уменьшения скорости анимации
-function incSp(){
-	if(DRAWTIME>0){
-	DRAWTIME-=5;
-	STEPTIME=DRAWTIME*20;
-	}
-}
-
-//Кнопка увеличения скорости анимации
-function decSp(){
-if(DRAWTIME<100){
-	DRAWTIME+=5;
-	STEPTIME=DRAWTIME*20;
-	}
+//Ползунок изменения скорости
+function setSpeed(){
+	DRAWTIME=50-document.getElementById("spVal").value;
+	STEPTIME=DRAWTIME*20
 }
 </script>
 <div id="menu">
@@ -740,10 +735,10 @@ if(DRAWTIME<100){
 <button onclick="cont()" ><img src="icons/play.png"></button>
 <button onclick="step()"><img src="icons/step.png"></button>
 <button onclick="fin()" ><img src="icons/stop.png"></button>
-speed:
-<button onclick="decSp()"><img src="icons/decSp.png"></button>
-<button onclick="incSp()"><img src="icons/incSp.png"></button>
+speed: <input type="range" min="5" max = "45" step="1" value="15" oninput="setSpeed()" id="spVal">
 
+</div>
+<div id="log">
 </div>
 
 <canvas height="400" width="1350" id="canva">
